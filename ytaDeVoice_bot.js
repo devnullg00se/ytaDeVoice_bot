@@ -9,10 +9,10 @@ const FormData = require('form-data');
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 
-const TELEGRAM_TOKEN = process.env.TOKEN_TG_BOT;
+const TOKEN_TG_BOT = process.env.TOKEN_TG_BOT;
 const TOKEN_OPENAI_API = process.env.TOKEN_OPENAI_API;
 
-const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: true });
+const bot = new TelegramBot(TOKEN_TG_BOT, { polling: true });
 
 // ---- helper: transcribe wav/ogg/mp3 file via OpenAI Whisper ----
 async function transcribeAudio(filePath) {
@@ -39,7 +39,7 @@ async function transcribeAudio(filePath) {
 // ---- helper: download telegram file to temp path ----
 async function downloadTelegramFile(fileId, ext) {
   const file = await bot.getFile(fileId);
-  const url = `https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${file.file_path}`;
+  const url = `https://api.telegram.org/file/bot${TOKEN_TG_BOT}/${file.file_path}`;
   const tmpPath = path.join('/tmp', `${fileId}${ext}`);
   const writer = fs.createWriteStream(tmpPath);
 
@@ -80,8 +80,13 @@ bot.on('voice', async (msg) => {
 
     await bot.sendMessage(chatId, `📝 Transcription: ${text}`);
   } catch (err) {
-    console.error(err);
-    await bot.sendMessage(chatId, '⚠️ Error while transcribing voice message');
+    if (err.response?.status === 429 || err.message?.includes('limit')) {
+    await bot.sendMessage(chatId,
+      '⚠️ Transcription rate limit reached');
+    } else {
+      await bot.sendMessage(chatId, '⚠️ Error while transcribing this message');
+    }
+    console.error(err.response?.data || err);
   }
 });
 
@@ -112,8 +117,13 @@ bot.on('video_note', async (msg) => {
 
     await bot.sendMessage(chatId, `🎥 Transcription: ${text}`);
   } catch (err) {
-    console.error(err);
-    await bot.sendMessage(chatId, '⚠️ Error while transcribing video note');
+    if (err.response?.status === 429 || err.message?.includes('limit')) {
+    await bot.sendMessage(chatId,
+      '⚠️ Transcription rate limit reached');
+    } else {
+      await bot.sendMessage(chatId, '⚠️ Error while transcribing this message');
+    }
+    console.error(err.response?.data || err);
   }
 });
 
